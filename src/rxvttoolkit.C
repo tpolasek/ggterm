@@ -70,7 +70,7 @@ static const char *const xa_names[] =
   "WM_LOCALE_NAME",
   "XIM_SERVERS",
 #endif
-#if HAVE_IMG || ENABLE_PERL
+#if HAVE_IMG
   "_XROOTPMAP_ID",
   "ESETROOT_PMAP_ID",
 #endif
@@ -1002,7 +1002,6 @@ rxvt_selection::rxvt_selection (rxvt_display *disp, int selnum, Time tm, Window 
   incr_buf_size = incr_buf_fill = 0;
   selection_wait = Sel_normal;
   selection_type = selnum;
-  cb_sv = 0;
 }
 
 void
@@ -1052,21 +1051,11 @@ rxvt_selection::run ()
 void
 rxvt_selection::finish (char *data, unsigned int len)
 {
-  if (!cb_sv)
-    {
-      if (data)
-        term->paste (data, len);
+  if (data)
+    term->paste (data, len);
 
-      term->selection_req = 0;
-      delete this;
-    }
-#if ENABLE_PERL
-  else
-    {
-      stop (); // we do not really trust perl callbacks
-      rxvt_perl.selection_finish (this, data, len);
-    }
-#endif
+  term->selection_req = 0;
+  delete this;
 }
 
 bool

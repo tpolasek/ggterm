@@ -600,14 +600,6 @@ rxvt_term::init_vars ()
   set_option (Opt_buffered);
 }
 
-#if ENABLE_PERL
-static void
-rxvt_perl_parse_resource (rxvt_term *term, const char *k, const char *v)
-{
-  rxvt_perl.parse_resource (term, k, false, false, 0, v);
-}
-#endif
-
 /*----------------------------------------------------------------------*/
 const char **
 rxvt_term::init_resources (int argc, const char *const *argv)
@@ -646,22 +638,6 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     if (rs [i] == resval_undef)
       rs [i] = 0;
 
-#if ENABLE_PERL
-  if (!rs[Rs_perl_ext_1])
-    rs[Rs_perl_ext_1] = "default";
-
-  if ((rs[Rs_perl_ext_1] && *rs[Rs_perl_ext_1])
-      || (rs[Rs_perl_ext_2] && *rs[Rs_perl_ext_2])
-      || (rs[Rs_perl_eval] && *rs[Rs_perl_eval]))
-    {
-      rxvt_perl.init (this);
-      enumerate_resources (rxvt_perl_parse_resource);
-      HOOK_INVOKE ((this, HOOK_INIT, DT_END));
-    }
-#endif
-
-  // must be called after initialising the perl interpreter as it
-  // may invoke the `on_register_command' hook
   extract_keysym_resources ();
 
   /*
@@ -817,20 +793,7 @@ rxvt_term::init (stringvec *argv, stringvec *envv)
 void
 rxvt_term::init (int argc, const char *const *argv, const char *const *envv)
 {
-#if ENABLE_PERL
-  // perl might want to access the stringvecs later, so we need to copy them
-  stringvec *args = new stringvec;
-  for (int i = 0; i < argc; i++)
-    args->push_back (strdup (argv [i]));
-
-  stringvec *envs = new stringvec;
-  for (const char *const *var = envv; *var; var++)
-    envs->push_back (strdup (*var));
-
-  init (args, envs);
-#else
   init2 (argc, argv);
-#endif
 }
 
 void
@@ -893,18 +856,12 @@ rxvt_term::init2 (int argc, const char *const *argv)
   if (option (Opt_scrollBar))
     scrollBar.resize ();      /* create and map scrollbar */
 
-#if ENABLE_PERL
-  rootwin_ev.start (display, display->root);
-#endif
-
   init_done = 1;
 
   init_command (cmd_argv);
 
   if (pty->pty >= 0)
     pty_ev.start (pty->pty, ev::READ);
-
-  HOOK_INVOKE ((this, HOOK_START, DT_END));
 
 #if ENABLE_XEMBED
   if (rs[Rs_embed])
@@ -1015,6 +972,12 @@ rxvt_term::init_env ()
     }
   else
     putenv ((char *)"TERM=" TERMENV);
+
+  /* the shell must not save its history file to disk (read-only filesystem) */
+  putenv ((char *)"HISTFILE=/dev/null");
+
+  /* directories in a cyan/blue mix (#00afd7) instead of the default blue */
+  putenv ((char *)"LS_COLORS=rs=0:di=01;38;5;38:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:");
 
 #ifdef HAVE_UNSETENV
   /* avoid passing old settings and confusing term size */
@@ -1618,21 +1581,12 @@ rxvt_term::run_command (const char *const *argv)
         _exit (EXIT_FAILURE);
 
       default:
-        if (!option (Opt_utmpInhibit))
-          {
-#ifdef LOG_ONLY_ON_LOGIN
-            bool login_shell = option (Opt_loginShell);
-#else
-            bool login_shell = true;
-#endif
-            pty->login (cmd_pid, login_shell, rs[Rs_display_name]);
-          }
-
+        // no utmp/wtmp/lastlog logging: pty->login () would write
+        // login records to disk, which must not happen on a
+        // read-only filesystem
         pty->close_tty ();
 
         child_ev.start (cmd_pid);
-
-        HOOK_INVOKE ((this, HOOK_CHILD_START, DT_INT, cmd_pid, DT_END));
         break;
     }
 }

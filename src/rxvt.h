@@ -47,19 +47,13 @@ typedef  int32_t tlen_t_; // specifically for use in the line_t structure
 
 #include "feature.h"
 
-#if defined (ISO_14755) || defined (ENABLE_PERL)
+#if defined (ISO_14755)
 # define ENABLE_OVERLAY 1
-#endif
-
-#if ENABLE_PERL
-# define ENABLE_FRILLS    1
-# define ENABLE_COMBINING 1
 #endif
 
 #if ENABLE_FRILLS
 # define ENABLE_XEMBED        1
 # define ENABLE_EWMH          1
-# define ENABLE_XIM_ONTHESPOT 1
 # define CURSOR_BLINK         1
 # define OPTION_HC            1
 # define BUILTIN_GLYPHS       1
@@ -92,8 +86,6 @@ typedef  int32_t tlen_t_; // specifically for use in the line_t structure
 #include "rxvtimg.h"
 #include "scrollbar.h"
 #include "ev_cpp.h"
-
-#include "rxvtperl.h"
 
 // try to avoid some macros to decrease code size, on some systems
 #if ENABLE_MINIMAL
@@ -191,11 +183,7 @@ extern char **rxvt_environ; // the original environ pointer
 static inline void
 set_environ (char **envv)
 {
-#if ENABLE_PERL
-  assert (envv);
-#else
   if (envv)
-#endif
     environ = envv;
 }
 
@@ -459,7 +447,6 @@ enum {
   URxvt_view_down        = 721,
 
   URxvt_cellinfo         = 776,     // returns font cell width, height etc.
-  URxvt_perl             = 777,     // for use by perl extensions, starts with "extension-name;"
 };
 
 /* Words starting with `Color_' are colours.  Others are counts */
@@ -713,7 +700,6 @@ typedef callback<int (int)> getfd_callback;
 /****************************************************************************/
 
 #define LINE_LONGER     0x0001 // line is continued on the next row
-#define LINE_FILTERED   0x0002 // line has been filtered
 #define LINE_COMPRESSED 0x0004 // line has been compressed (NYI)
 #define LINE_FILTER     0x0008 // line needs to be filtered before display (NYI)
 #define LINE_BIDI       0x0010 // line needs bidi (NYI)
@@ -758,9 +744,6 @@ struct line_t
 
    void touch () // call whenever a line is changed/touched/updated
    {
-#if ENABLE_PERL
-     f &= ~LINE_FILTERED;
-#endif
    }
 
    void touch (int col)
@@ -791,13 +774,8 @@ struct mbstate
 # define COMPOSE_HI 0x1fffffUL
 # define IS_COMPOSE(n) ((int32_t)(n) >= COMPOSE_LO)
 #else
-# if ENABLE_PERL
-#  define COMPOSE_LO 0xe000UL // our _own_ functions don't like (illegal) surrogates
-#  define COMPOSE_HI 0xf8ffUL // in utf-8, so use private use area only
-# else
-#  define COMPOSE_LO 0xd800UL
-#  define COMPOSE_HI 0xf8ffUL
-# endif
+# define COMPOSE_LO 0xd800UL
+# define COMPOSE_HI 0xf8ffUL
 # define IS_COMPOSE(n) IN_RANGE_INC ((n), COMPOSE_LO, COMPOSE_HI)
 #endif
 
@@ -1099,9 +1077,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 
   log_callback   *log_hook;             // log error messages through this hook, if != 0
   getfd_callback *getfd_hook;           // convert remote to local fd, if != 0
-#if ENABLE_PERL
-  rxvt_perl_term  perl;
-#endif
   struct mbstate  mbstate;              // current input multibyte state
 
   unsigned char   want_refresh:1,
@@ -1255,17 +1230,12 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 # endif
 #endif
 
-  long vt_emask, vt_emask_perl, vt_emask_xim, vt_emask_mouse;
+  long vt_emask, vt_emask_xim, vt_emask_mouse;
 
   void vt_select_input () const noexcept
   {
-    XSelectInput (dpy, vt, vt_emask | vt_emask_perl | vt_emask_xim | vt_emask_mouse);
+    XSelectInput (dpy, vt, vt_emask | vt_emask_xim | vt_emask_mouse);
   }
-
-#if ENABLE_PERL
-  void rootwin_cb (XEvent &xev);
-  xevent_watcher rootwin_ev;
-#endif
 
   void x_cb (XEvent &xev);
   xevent_watcher termwin_ev;

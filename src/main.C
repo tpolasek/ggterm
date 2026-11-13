@@ -35,7 +35,6 @@
 #include "rxvt.h"               /* NECESSARY */
 #include "init.h"
 #include "keyboard.h"
-#include "rxvtperl.h"
 
 #include <limits>
 
@@ -171,9 +170,6 @@ rxvt_term::rxvt_term ()
 #if defined(MOUSE_WHEEL) && defined(MOUSE_SLIP_WHEELING)
   slip_wheel_ev.set       <rxvt_term, &rxvt_term::slip_wheel_cb>   (this);
 #endif
-#if ENABLE_PERL
-  rootwin_ev.set          <rxvt_term, &rxvt_term::rootwin_cb> (this),
-#endif
   scrollbar_ev.set        <rxvt_term, &rxvt_term::x_cb>       (this),
 #if USE_XIM
   im_ev.set               <rxvt_term, &rxvt_term::im_cb>      (this),
@@ -299,8 +295,6 @@ rxvt_term::~rxvt_term ()
 void
 rxvt_term::child_cb (ev::child &w, int status)
 {
-  HOOK_INVOKE ((this, HOOK_CHILD_EXIT, DT_INT, status, DT_END));
-
   cmd_pid = 0;
 
   if (!option (Opt_hold))
@@ -313,7 +307,6 @@ rxvt_term::destroy ()
   if (destroy_ev.is_active ())
     return;
 
-  HOOK_INVOKE ((this, HOOK_DESTROY, DT_END));
 
 #if ENABLE_OVERLAY
   scr_overlay_off ();
@@ -325,9 +318,6 @@ rxvt_term::destroy ()
       im_ev.stop (display);
 #endif
       scrollbar_ev.stop (display);
-#if ENABLE_PERL
-      rootwin_ev.stop (display);
-#endif
       termwin_ev.stop (display);
       vt_ev.stop (display);
     }
@@ -1083,7 +1073,7 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
 
   window_calc (newwidth, newheight);
 
-  bool set_hint = !HOOK_INVOKE ((this, HOOK_RESIZE_ALL_WINDOWS, DT_INT, newwidth, DT_INT, newheight, DT_END));
+  bool set_hint = true;
 
   // to avoid races between us and the wm, we clear the incremental size hints around the xresizewindow
   if (set_hint)
@@ -1156,8 +1146,6 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
       XMoveResizeWindow (dpy, vt,
                          window_vt_x, window_vt_y,
                          vt_width, vt_height);
-
-      HOOK_INVOKE ((this, HOOK_SIZE_CHANGE, DT_INT, newwidth, DT_INT, newheight, DT_END));
     }
 
   if (fix_screen || old_height == 0)
@@ -1298,80 +1286,6 @@ rxvt_term::im_destroy ()
   Input_Context = 0;
 }
 
-#ifdef ENABLE_XIM_ONTHESPOT
-
-static void
-xim_preedit_start (XIC ic, XPointer client_data, XPointer call_data)
-{
-  ((rxvt_term *)client_data)->make_current ();
-  HOOK_INVOKE (((rxvt_term *)client_data, HOOK_XIM_PREEDIT_START, DT_END));
-}
-
-static void
-xim_preedit_done (XIC ic, XPointer client_data, XPointer call_data)
-{
-  ((rxvt_term *)client_data)->make_current ();
-  HOOK_INVOKE (((rxvt_term *)client_data, HOOK_XIM_PREEDIT_DONE, DT_END));
-}
-
-static void
-xim_preedit_draw (XIC ic, XPointer client_data, XIMPreeditDrawCallbackStruct *call_data)
-{
-  rxvt_term *term = (rxvt_term *)client_data;
-  XIMText *text = call_data->text;
-
-  term->make_current ();
-
-  if (text)
-    {
-      wchar_t *str;
-
-      if (!text->encoding_is_wchar && text->string.multi_byte)
-        {
-          // of course, X makes it ugly again
-          if (term->rs[Rs_imLocale])
-            SET_LOCALE (term->rs[Rs_imLocale]);
-
-          str = rxvt_temp_buf<wchar_t> (text->length + 1);
-          mbstowcs (str, text->string.multi_byte, text->length + 1);
-
-          if (term->rs[Rs_imLocale])
-            SET_LOCALE (term->locale);
-        }
-      else
-        str = text->string.wide_char;
-
-      HOOK_INVOKE ((term, HOOK_XIM_PREEDIT_DRAW,
-                    DT_INT, call_data->caret,
-                    DT_INT, call_data->chg_first,
-                    DT_INT, call_data->chg_length,
-                    DT_LCS_LEN, (void *)text->feedback, text->feedback ? (int)text->length : 0,
-                    DT_WCS_LEN, str, str ? (int)text->length : 0,
-                    DT_END));
-    }
-  else
-    HOOK_INVOKE ((term, HOOK_XIM_PREEDIT_DRAW,
-                  DT_INT, call_data->caret,
-                  DT_INT, call_data->chg_first,
-                  DT_INT, call_data->chg_length,
-                  DT_END));
-}
-
-#if 0
-static void
-xim_preedit_caret (XIC ic, XPointer client_data, XIMPreeditCaretCallbackStruct *call_data)
-{
-  ((rxvt_term *)client_data)->make_current ();
-  HOOK_INVOKE (((rxvt_term *)client_data, HOOK_XIM_PREEDIT_CARET,
-                DT_INT, call_data->position,
-                DT_INT, call_data->direction,
-                DT_INT, call_data->style,
-                DT_END));
-}
-#endif
-
-#endif
-
 /*
  * Try to open a XIM with the current modifiers, then see if we can
  * open a suitable preedit type
@@ -1429,10 +1343,6 @@ rxvt_term::im_get_ic (const char *modifiers)
             input_style = XIMPreeditNothing | XIMStatusNothing;
           else if (!strcmp (s[i], "None"))
             input_style = XIMPreeditNone | XIMStatusNone;
-#ifdef ENABLE_XIM_ONTHESPOT
-          else if (SHOULD_INVOKE (HOOK_XIM_PREEDIT_START) && !strcmp (s[i], "OnTheSpot"))
-            input_style = XIMPreeditCallbacks | XIMStatusNothing;
-#endif
           else
             input_style = XIMPreeditNothing | XIMStatusNothing;
 
@@ -1533,31 +1443,6 @@ foundpet:
                                          XNFontSet, fs,
                                          NULL);
     }
-#if ENABLE_XIM_ONTHESPOT
-  else if (input_style & XIMPreeditCallbacks)
-    {
-      XIMCallback xcb[4];
-
-      im_set_position (spot);
-
-      xcb[0].client_data = (XPointer)this; xcb[0].callback = (XIMProc)xim_preedit_start;
-      xcb[1].client_data = (XPointer)this; xcb[1].callback = (XIMProc)xim_preedit_done;
-      xcb[2].client_data = (XPointer)this; xcb[2].callback = (XIMProc)xim_preedit_draw;
-# if 0
-      xcb[3].client_data = (XPointer)this; xcb[3].callback = (XIMProc)xim_preedit_caret;
-# endif
-
-      preedit_attr = XVaCreateNestedList (0,
-                                          XNSpotLocation, &spot,
-                                          XNPreeditStartCallback, &xcb[0],
-                                          XNPreeditDoneCallback , &xcb[1],
-                                          XNPreeditDrawCallback , &xcb[2],
-# if 0
-                                          XNPreeditCaretCallback, &xcb[3],
-# endif
-                                          NULL);
-    }
-#endif
 
   Input_Context = XCreateIC (xim,
                              XNInputStyle, input_style,

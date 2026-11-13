@@ -48,7 +48,6 @@
 /*{{{ includes: */
 #include "../config.h"
 #include "rxvt.h"
-#include "rxvtperl.h"
 #include "version.h"
 #include "command.h"
 
@@ -699,9 +698,6 @@ rxvt_term::key_press (XKeyEvent &ev)
       len++;
     }
 
-  if (HOOK_INVOKE ((this, HOOK_KEY_PRESS, DT_XEVENT, &ev, DT_INT, keysym, DT_STR_LEN, kbuf, len, DT_END)))
-    return;
-
   if (keysym != NoSymbol)
     {
 #ifdef KEYSYM_RESOURCE
@@ -878,7 +874,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 void ecb_cold
 rxvt_term::key_release (XKeyEvent &ev)
 {
-#if (MOUSE_WHEEL && MOUSE_SLIP_WHEELING) || ISO_14755 || ENABLE_PERL
+#if (MOUSE_WHEEL && MOUSE_SLIP_WHEELING) || ISO_14755
   KeySym keysym;
 
   keysym = XLookupKeysym (&ev, ev.state & ShiftMask ? 1 : 0); // sorry, only shift supported :/
@@ -941,9 +937,6 @@ rxvt_term::key_release (XKeyEvent &ev)
       }
 #endif
 
-  if (HOOK_INVOKE ((this, HOOK_KEY_RELEASE, DT_XEVENT, &ev, DT_INT, keysym, DT_END)))
-    return;
-
 #if defined(MOUSE_WHEEL) && defined(MOUSE_SLIP_WHEELING)
   if (!(ev.state & ControlMask))
     slip_wheel_ev.stop ();
@@ -967,44 +960,6 @@ rxvt_term::flush ()
 
   if (want_refresh)
     {
-      if (SHOULD_INVOKE (HOOK_LINE_UPDATE))
-        {
-          int row = view_start;
-          int end_row = row + nrow;
-
-          while (row > top_row && ROW (row - 1).is_longer ())
-            --row;
-
-          do
-            {
-              int start_row = row;
-              line_t *l;
-
-              do
-                {
-                  l = &ROW (row++);
-
-                  if (!(l->f & LINE_FILTERED))
-                    {
-                      // line not filtered, mark it as filtered
-                      l->f |= LINE_FILTERED;
-                      while (l->is_longer ())
-                        {
-                          l = &ROW (row++);
-                          l->f |= LINE_FILTERED;
-                        }
-
-                      // and filter it
-                      HOOK_INVOKE ((this, HOOK_LINE_UPDATE, DT_INT, start_row, DT_END));
-
-                      break;
-                    }
-                }
-              while (l->is_longer () && row < end_row);
-            }
-          while (row < end_row);
-        }
-
       scr_refresh ();
       scrollBar.show (1);
 #if USE_XIM
@@ -1395,11 +1350,6 @@ rxvt_term::x_cb (XEvent &ev)
 
   dLocal (Display *, dpy);
 
-  if (ev.xany.window == vt
-      && SHOULD_INVOKE (HOOK_X_EVENT)
-      && HOOK_INVOKE ((this, HOOK_X_EVENT, DT_XEVENT, &ev, DT_END)))
-    return;
-
   // for XQueryPointer
   Window unused_root, unused_child;
   int unused_root_x, unused_root_y;
@@ -1424,17 +1374,14 @@ rxvt_term::x_cb (XEvent &ev)
         break;
 
       case ClientMessage:
-        if (ev.xclient.format == 32
-            && !HOOK_INVOKE ((this, HOOK_CLIENT_MESSAGE, DT_XEVENT, &ev, DT_END)))
+        if (ev.xclient.format == 32)
           {
             if (ev.xclient.message_type == xa[XA_WM_PROTOCOLS])
               {
-                if (!HOOK_INVOKE ((this, HOOK_WM_PROTOCOLS, DT_XEVENT, &ev, DT_END)))
-                  {
+                {
                     if (ev.xclient.data.l[0] == xa[XA_WM_DELETE_WINDOW])
                       {
-                        if (!HOOK_INVOKE ((this, HOOK_WM_DELETE_WINDOW, DT_XEVENT, &ev, DT_END)))
-                          destroy ();
+                        destroy ();
                       }
 #if ENABLE_EWMH
                     else if (ev.xclient.data.l[0] == xa[XA_NET_WM_PING])
@@ -1501,40 +1448,12 @@ rxvt_term::x_cb (XEvent &ev)
             while (XCheckTypedWindowEvent (dpy, ev.xconfigure.window, ConfigureNotify, &ev))
               ;
 
-            bool want_position_change = SHOULD_INVOKE (HOOK_POSITION_CHANGE);
-
-            if (want_position_change)
-              {
-                int x, y;
-
-                if (ev.xconfigure.send_event)
-                  {
-                    x = ev.xconfigure.x;
-                    y = ev.xconfigure.y;
-                  }
-                else
-                  get_window_origin (x, y);
-
-                if (x != parent_x || y != parent_y)
-                  {
-                    parent_x = x;
-                    parent_y = y;
-                    HOOK_INVOKE ((this, HOOK_POSITION_CHANGE, DT_INT, x, DT_INT, y, DT_END));
-                  }
-              }
-
             if (szHint.width != ev.xconfigure.width || szHint.height != ev.xconfigure.height)
               {
                 seen_resize = 1;
                 resize_all_windows (ev.xconfigure.width, ev.xconfigure.height, 1);
               }
-
-            HOOK_INVOKE ((this, HOOK_CONFIGURE_NOTIFY, DT_XEVENT, &ev, DT_END));
           }
-        break;
-
-      case PropertyNotify:
-        HOOK_INVOKE ((this, HOOK_PROPERTY_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
 
       case SelectionClear:
@@ -1550,7 +1469,6 @@ rxvt_term::x_cb (XEvent &ev)
 #ifdef TEXT_BLINK
         text_blink_ev.start ();
 #endif
-        HOOK_INVOKE ((this, HOOK_MAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
 
       case UnmapNotify:
@@ -1558,7 +1476,6 @@ rxvt_term::x_cb (XEvent &ev)
 #ifdef TEXT_BLINK
         text_blink_ev.stop ();
 #endif
-        HOOK_INVOKE ((this, HOOK_UNMAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
 
       case GraphicsExpose:
@@ -1613,10 +1530,7 @@ rxvt_term::x_cb (XEvent &ev)
 
         if (ev.xany.window == vt)
           {
-            if (SHOULD_INVOKE (HOOK_MOTION_NOTIFY)
-                && HOOK_INVOKE ((this, HOOK_MOTION_NOTIFY, DT_XEVENT, &ev, DT_END)))
-              ; // nop
-            else if (ev.xbutton.state & (Button1Mask | Button3Mask))
+            if (ev.xbutton.state & (Button1Mask | Button3Mask))
               {
                 while (XCheckTypedWindowEvent (dpy, vt, MotionNotify, &ev))
                   ;
@@ -1783,8 +1697,6 @@ rxvt_term::focus_in ()
       if (priv_modes & PrivMode_FocusEvent)
         tt_printf ("\x1b[I");
 #endif
-
-      HOOK_INVOKE ((this, HOOK_FOCUS_IN, DT_END));
     }
 }
 
@@ -1829,8 +1741,6 @@ rxvt_term::focus_out ()
           scr_recolor ();
         }
 #endif
-
-      HOOK_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
     }
 }
 
@@ -1850,36 +1760,6 @@ rxvt_term::update_fade_color (unsigned int idx, bool first_time)
 #endif
 }
 
-#if ENABLE_PERL
-void ecb_hot
-rxvt_term::rootwin_cb (XEvent &ev)
-{
-  make_current ();
-
-  if (SHOULD_INVOKE (HOOK_ROOT_EVENT)
-      && HOOK_INVOKE ((this, HOOK_ROOT_EVENT, DT_XEVENT, &ev, DT_END)))
-    return;
-
-  switch (ev.type)
-    {
-      case PropertyNotify:
-        /*
-         * if user used some Esetroot compatible prog to set the root bg,
-         * use the property to determine the pixmap.  We use it later on.
-         */
-        if (ev.xproperty.atom == xa[XA_XROOTPMAP_ID]
-            || ev.xproperty.atom == xa[XA_ESETROOT_PMAP_ID])
-          {
-            HOOK_INVOKE ((this, HOOK_ROOTPMAP_CHANGE, DT_END));
-          }
-
-        break;
-    }
-
-  refresh_check ();
-}
-#endif
-
 void
 rxvt_term::button_press (XButtonEvent &ev)
 {
@@ -1895,9 +1775,6 @@ rxvt_term::button_press (XButtonEvent &ev)
    */
   if (ev.window == vt)
     {
-      if (HOOK_INVOKE ((this, HOOK_BUTTON_PRESS, DT_XEVENT, &ev, DT_END)))
-        return;
-
 #if ISO_14755
       // 5.4
       if (iso14755buf & (ISO_14755_STARTED | ISO_14755_54))
@@ -2147,9 +2024,6 @@ rxvt_term::button_release (XButtonEvent &ev)
 
   if (ev.window == vt)
     {
-      if (HOOK_INVOKE ((this, HOOK_BUTTON_RELEASE, DT_XEVENT, &ev, DT_END)))
-        return;
-
 #if ISO_14755
       // 5.4
       if (iso14755buf & (ISO_14755_STARTED | ISO_14755_54))
@@ -2311,9 +2185,7 @@ rxvt_term::cmd_parse ()
                   // scr_add_lines only works for nlines <= nrow - 1.
                   if (nlines >= nrow - 1)
                     {
-                      if (!(SHOULD_INVOKE (HOOK_ADD_LINES)
-                            && HOOK_INVOKE ((this, HOOK_ADD_LINES, DT_WCS_LEN, buf, str - buf, DT_END))))
-                        scr_add_lines (buf, str - buf, nlines);
+                      scr_add_lines (buf, str - buf, nlines);
 
                       nlines = 0;
                       str = buf;
@@ -2337,9 +2209,7 @@ rxvt_term::cmd_parse ()
               ch = next_char ();
             }
 
-          if (!(SHOULD_INVOKE (HOOK_ADD_LINES)
-                && HOOK_INVOKE ((this, HOOK_ADD_LINES, DT_WCS_LEN, buf, str - buf, DT_END))))
-            scr_add_lines (buf, str - buf, nlines);
+          scr_add_lines (buf, str - buf, nlines);
 
           /*
            * If there have been a lot of new lines, then update the screen
@@ -3476,9 +3346,6 @@ rxvt_term::process_xterm_seq (int op, char *str, string_term &st)
 
   assert (str != NULL);
 
-  if (HOOK_INVOKE ((this, HOOK_OSC_SEQ, DT_INT, op, DT_STR, str, DT_END)))
-    return;
-
   switch (op)
     {
       case XTerm_name:
@@ -3666,12 +3533,6 @@ rxvt_term::process_xterm_seq (int op, char *str, string_term &st)
             scr_erase_savelines ();
         }
 
-        break;
-#endif
-
-#if ENABLE_PERL
-      case URxvt_perl:
-        HOOK_INVOKE ((this, HOOK_OSC_SEQ_PERL, DT_STR, str, DT_STR, st.v, DT_END));
         break;
 #endif
     }
@@ -4159,9 +4020,6 @@ rxvt_term::tt_printf (const char *fmt,...)
 void
 rxvt_term::tt_write_user_input (const char *data, unsigned int len)
 {
-  if (HOOK_INVOKE ((this, HOOK_TT_WRITE, DT_STR_LEN, data, len, DT_END)))
-    return;
-
   if (option (Opt_scrollTtyKeypress))
     scr_changeview (0);
 
@@ -4171,9 +4029,6 @@ rxvt_term::tt_write_user_input (const char *data, unsigned int len)
 void
 rxvt_term::tt_write (const char *data, unsigned int len)
 {
-  if (HOOK_INVOKE ((this, HOOK_TT_WRITE, DT_STR_LEN, data, len, DT_END)))
-    return;
-
   tt_write_ (data, len);
 }
 

@@ -68,7 +68,7 @@ enum {
   XA_WM_LOCALE_NAME,
   XA_XIM_SERVERS,
 #endif
-#if HAVE_IMG || ENABLE_PERL
+#if HAVE_IMG
   XA_XROOTPMAP_ID,
   XA_ESETROOT_PMAP_ID,
 #endif
@@ -387,7 +387,6 @@ struct rxvt_selection
   ~rxvt_selection ();
 
   rxvt_term *term; // terminal to paste to, may be 0
-  void *cb_sv;     // managed by perl
 
   rxvt_display *display;
   Time request_time;

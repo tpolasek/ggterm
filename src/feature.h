@@ -97,9 +97,8 @@
 /*
  * Enable the keysym resource which allows you to define strings associated
  * with various KeySyms (0xFF00 - 0xFFFF).
- * Required by perl.
  */
-#if ENABLE_FRILLS || ENABLE_PERL
+#if ENABLE_FRILLS
 # define KEYSYM_RESOURCE
 #endif
 
@@ -331,9 +330,10 @@
 #define COLOR_CURSOR_BACKGROUND	NULL	/* if NULL, use foreground colour */
 
 /*
- * Printer pipe which will be used for emulation of attached vt100 printer
+ * Printer pipe which will be used for emulation of attached vt100 printer.
+ * Undefined to compile out printing entirely (read-only filesystem build:
+ * the pipe command would write spool files to disk).
  */
-#define PRINTPIPE	"lpr"
 
 /*
  * Define defaults for backspace and delete keys - unless they have been

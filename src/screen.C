@@ -27,7 +27,6 @@
 
 #include "../config.h"          /* NECESSARY */
 #include "rxvt.h"               /* NECESSARY */
-#include "rxvtperl.h"           /* NECESSARY */
 
 #include <inttypes.h>
 
@@ -439,8 +438,6 @@ rxvt_term::scr_reset ()
   prev_ncol = ncol;
 
   tt_winch ();
-
-  HOOK_INVOKE ((this, HOOK_RESET, DT_END));
 }
 
 void ecb_cold
@@ -720,9 +717,6 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count) noexcept
           && view_start != 0
           && view_start != -saveLines)
         scr_page (count);
-
-      if (SHOULD_INVOKE (HOOK_SCROLL_BACK))
-        HOOK_INVOKE ((this, HOOK_SCROLL_BACK, DT_INT, count, DT_INT, top_row, DT_END));
     }
   else
     {
@@ -1936,8 +1930,6 @@ rxvt_term::scr_changeview (int new_view_start) noexcept
   view_start = new_view_start;
   want_refresh = 1;
 
-  HOOK_INVOKE ((this, HOOK_VIEW_CHANGE, DT_INT, view_start, DT_END));
-
   return true;
 }
 
@@ -1979,7 +1971,6 @@ rxvt_term::scr_bell () noexcept
     }
   else
     XBell (dpy, 0);
-  HOOK_INVOKE ((this, HOOK_BELL, DT_END));
 #endif
 }
 
@@ -2077,7 +2068,6 @@ rxvt_term::scr_refresh () noexcept
    */
   scr_reverse_selection ();
 
-  HOOK_INVOKE ((this, HOOK_REFRESH_BEGIN, DT_END));
 #if ENABLE_OVERLAY
   scr_swap_overlay ();
 #endif
@@ -2491,7 +2481,6 @@ rxvt_term::scr_refresh () noexcept
 #if ENABLE_OVERLAY
   scr_swap_overlay ();
 #endif
-  HOOK_INVOKE ((this, HOOK_REFRESH_END, DT_END));
 
   scr_reverse_selection ();
 
@@ -2733,9 +2722,6 @@ rxvt_term::tt_paste (char *data, unsigned int len) noexcept
 void
 rxvt_term::paste (char *data, unsigned int len) noexcept
 {
-  if (HOOK_INVOKE ((this, HOOK_TT_PASTE, DT_STR_LEN, data, len, DT_END)))
-    return;
-
   tt_paste (data, len);
 }
 
@@ -2816,9 +2802,6 @@ rxvt_term::selection_make (Time tm)
 
   if (selection.clicks == 4)
     return;                 /* nothing selected, go away */
-
-  if (HOOK_INVOKE ((this, HOOK_SEL_MAKE, DT_LONG, (long)tm, DT_END)))
-    return;
 
   size = (selection.end.row - selection.beg.row + 1) * (ncol + 1);
   new_selection_text = (wchar_t *)rxvt_malloc ((size + 4) * sizeof (wchar_t));
@@ -2907,10 +2890,18 @@ rxvt_term::selection_make (Time tm)
   selection.len = ofs;
   selection.text = (wchar_t *)rxvt_realloc (new_selection_text, (ofs + 1) * sizeof (wchar_t));
 
-  if (HOOK_INVOKE ((this, HOOK_SEL_GRAB, DT_LONG, (long)tm, DT_END)))
-    return;
-
   selection_grab (tm);
+
+  // auto-copy the finished selection to the clipboard as well
+  if (selection.len > 0)
+    {
+      free (selection.clip_text);
+      selection.clip_text = (wchar_t *)rxvt_malloc ((selection.len + 1) * sizeof (wchar_t));
+      memcpy (selection.clip_text, selection.text, selection.len * sizeof (wchar_t));
+      selection.clip_text[selection.len] = 0;
+      selection.clip_len = selection.len;
+      selection_grab (tm, true);
+    }
 }
 
 bool
@@ -2963,8 +2954,7 @@ rxvt_term::selection_click (int clicks, int x, int y) noexcept
   clicks = ((clicks - 1) % 3) + 1;
   selection.clicks = clicks;       /* save clicks so extend will work */
 
-  if (clicks == 2 && !selection.rect
-      && HOOK_INVOKE ((this, HOOK_SEL_EXTEND, DT_END)))
+  if (clicks == 2 && !selection.rect)
     {
       MEvent.clicks = 1; // what a mess
       selection.screen = current_screen;

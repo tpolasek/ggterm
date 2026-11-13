@@ -1,4 +1,4 @@
-// all resource indices, used by rxvt.h and rxvtperl.xs
+// all resource indices, used by rxvt.h
 
   def (display_name)
   def (term_name)
@@ -105,12 +105,6 @@
 #endif
 #if OFF_FOCUS_FADING
   def (fade)
-#endif
-#if ENABLE_PERL
-  def (perl_eval)
-  def (perl_ext_1)
-  def (perl_ext_2)
-  def (perl_lib)
 #endif
 #if ISO_14755
   def (iso14755)

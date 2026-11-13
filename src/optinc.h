@@ -1,4 +1,4 @@
-// all resource indices, used by rxvt.h and rxvtperl.xs
+// all resource indices, used by rxvt.h
 
  def(loginShell)
  def(multiClickTime)
