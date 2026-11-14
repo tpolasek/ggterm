@@ -20,6 +20,7 @@ struct tab_watcher
   xevent_watcher ev;
   rxvt_term *term;
   Window window;  // the tab's toplevel (term->parent), valid after the term is gone
+  bool closing;   // the term is being destroyed, do not touch its window
 };
 
 struct rxvt_tab_manager
@@ -27,6 +28,7 @@ struct rxvt_tab_manager
   rxvt_display *display;
   Window frame;
   xevent_watcher frame_ev;
+  ev::idle shutdown_ev; // deferred self-destruct, see shutdown_cb
 
   vector<tab_watcher *> tabs;
   int active;
@@ -54,9 +56,11 @@ struct rxvt_tab_manager
 
   void frame_cb (XEvent &ev);
   void tab_cb (XEvent &ev);
+  void shutdown_cb ();
   void draw_bar ();
   void layout ();
   int tab_at (int x);
+  int next_alive (int from); // nearest tab not being destroyed
 };
 
 extern rxvt_tab_manager *tab_manager;

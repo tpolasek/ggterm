@@ -157,6 +157,8 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
   frame_ev.set<rxvt_tab_manager, &rxvt_tab_manager::frame_cb> (this);
   frame_ev.start (display, frame);
 
+  shutdown_ev.set<rxvt_tab_manager, &rxvt_tab_manager::shutdown_cb> (this);
+
   spawn ();
 
   XMapWindow (dpy, frame);
@@ -192,6 +194,7 @@ rxvt_tab_manager::spawn ()
   tab_watcher *w = new tab_watcher;
   w->term = t;
   w->window = t->parent;
+  w->closing = false;
   w->ev.set<rxvt_tab_manager, &rxvt_tab_manager::tab_cb> (this);
   w->ev.start (display, t->parent);
 
@@ -208,14 +211,29 @@ void
 rxvt_tab_manager::close_tab ()
 {
   if (active >= 0 && active < tabs.size ())
-    tabs[active]->term->destroy ();
+    {
+      tabs[active]->closing = true;
+      tabs[active]->term->destroy ();
+    }
+}
+
+void
+rxvt_tab_manager::shutdown_cb ()
+{
+  shutdown_ev.stop ();
+  shutdown ();
 }
 
 void
 rxvt_tab_manager::switch_tab (int dir)
 {
-  if (tabs.size ())
-    activate ((active + dir + tabs.size ()) % tabs.size ());
+  if (!tabs.size ())
+    return;
+
+  int idx = next_alive ((active + dir + tabs.size ()) % tabs.size ());
+
+  if (idx >= 0 && idx != active)
+    activate (idx);
 }
 
 void
@@ -224,7 +242,7 @@ rxvt_tab_manager::activate (int idx)
   if (idx == active)
     return;
 
-  if (active >= 0 && active < tabs.size ())
+  if (active >= 0 && active < tabs.size () && !tabs[active]->closing)
     XUnmapWindow (display->dpy, tabs[active]->window);
 
   active = idx;
@@ -243,7 +261,7 @@ rxvt_tab_manager::activate (int idx)
 void
 rxvt_tab_manager::focus_active ()
 {
-  if (active < 0 || active >= tabs.size ())
+  if (active < 0 || active >= tabs.size () || tabs[active]->closing)
     return;
 
   Window win = tabs[active]->window;
@@ -317,7 +335,10 @@ rxvt_tab_manager::frame_cb (XEvent &ev)
           {
             // close everything; shutdown happens when the last tab is gone
             for (int i = tabs.size (); i--; )
-              tabs[i]->term->destroy ();
+              {
+                tabs[i]->closing = true;
+                tabs[i]->term->destroy ();
+              }
           }
         break;
 
@@ -342,16 +363,23 @@ rxvt_tab_manager::tab_cb (XEvent &ev)
 
       if (!tabs.size ())
         {
-          shutdown ();
+          // defer the self-destruct: deleting synchronously here would
+          // free the display while its event loop is still dispatching
+          if (!shutdown_ev.is_active ())
+            shutdown_ev.start ();
           return;
         }
 
-      if (active >= tabs.size ())
-        active = tabs.size () - 1;
+      if (active >= (int)tabs.size () || tabs[active]->closing)
+        {
+          int next = next_alive (active);
 
-      activate (active);
-      // activate() early-returns when the index is unchanged
-      XMapWindow (display->dpy, tabs[active]->window);
+          if (next >= 0)
+            activate (next);
+          else
+            active = -1; // everything is closing, just wait
+        }
+
       draw_bar ();
       display->flush ();
     }
@@ -359,6 +387,26 @@ rxvt_tab_manager::tab_cb (XEvent &ev)
            && (ev.xproperty.atom == XA_WM_NAME
                || ev.xproperty.atom == display->xa[XA_NET_WM_NAME]))
     draw_bar ();
+}
+
+int
+rxvt_tab_manager::next_alive (int from)
+{
+  int n = tabs.size ();
+  if (!n)
+    return -1;
+
+  for (int d = 0; d < n; d++)
+    {
+      int i = (from + d) % n;
+      if (i < 0)
+        i += n;
+
+      if (!tabs[i]->closing)
+        return i;
+    }
+
+  return -1;
 }
 
 void
@@ -424,7 +472,7 @@ rxvt_tab_manager::draw_bar ()
         }
 
       char *name = 0;
-      bool have_name = XFetchName (dpy, tabs[i]->window, &name);
+      bool have_name = !tabs[i]->closing && XFetchName (dpy, tabs[i]->window, &name);
 
       const char *title = have_name && name ? name : "urxvt";
       size_t len = strlen (title);
