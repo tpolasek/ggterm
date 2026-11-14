@@ -217,6 +217,7 @@ optList[] = {
               STRG (Rs_saveLines, "saveLines", "sl", "number", "number of scrolled lines to save"),
 #if ENABLE_XEMBED
               STRG (Rs_embed, NULL, "embed", "windowid", "window id to embed terminal in"),
+              BOOL (Rs_tabs, "tabs", "tab", Opt_tabs, 0, "tab support (one frame window with tabs)"),
 #endif
 #if XFT
               BOOL (Rs_buffered, "buffered", NULL, Opt_buffered, 0, NULL),

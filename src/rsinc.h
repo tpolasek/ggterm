@@ -82,6 +82,7 @@
 #endif
 #if ENABLE_XEMBED
   def (embed)
+  def (tabs)
 #endif
   def (cutchars)
   def (modifier)

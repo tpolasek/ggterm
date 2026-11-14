@@ -37,7 +37,7 @@ COMMON = \
 	screen.o scrollbar.o scrollbar-next.o scrollbar-rxvt.o \
 	scrollbar-xterm.o scrollbar-plain.o xdefaults.o encoding.o \
 	rxvttoolkit.o rxvtutil.o keyboard.o rxvtimg.o \
-	ev_cpp.o
+	ev_cpp.o tabbed.o
 
 COMMON_DAEMON = rxvtdaemon.o
 
@@ -73,6 +73,7 @@ rxvtc: rxvtc.o $(COMMON_DAEMON)
 rclock: rclock.o
 	$(LINK) -o $@ rclock.o $(LIBS) $(XLIB)
 
+tabbed.o: ../config.h tabbed.h rxvt.h feature.h rxvttoolkit.h
 #-------------------------------------------------------------------------
 
 tags: *.[Ch]

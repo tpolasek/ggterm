@@ -22,6 +22,7 @@
 
 #include "../config.h"
 #include "rxvt.h"
+#include "tabbed.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,17 @@ try
   {
     ptytty::init ();
     rxvt_init ();
+
+#if ENABLE_XEMBED
+    if (rxvt_tabbed_requested (argc, argv))
+      {
+        tab_manager = new rxvt_tab_manager;
+        tab_manager->run (argc, argv, environ);
+        ev_run ();
+
+        return EXIT_SUCCESS;
+      }
+#endif
 
     rxvt_term *t = new rxvt_term;
     t->init (argc, argv, environ);

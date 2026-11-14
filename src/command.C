@@ -48,6 +48,7 @@
 /*{{{ includes: */
 #include "../config.h"
 #include "rxvt.h"
+#include "tabbed.h"
 #include "version.h"
 #include "command.h"
 
@@ -800,6 +801,46 @@ rxvt_term::key_press (XKeyEvent &ev)
 
           return;
         }
+
+#if ENABLE_XEMBED
+      if (tab_manager)
+        {
+          if (ctrl && shft)
+            {
+              // shift turns letter keysyms into their uppercase form
+              if (keysym == XK_t || keysym == XK_T)
+                {
+                  tab_manager->spawn ();
+                  return;
+                }
+
+              if (keysym == XK_w || keysym == XK_W)
+                {
+                  tab_manager->close_tab ();
+                  return;
+                }
+
+              if (keysym == XK_Right)
+                {
+                  tab_manager->switch_tab (1);
+                  return;
+                }
+
+              if (keysym == XK_Left)
+                {
+                  tab_manager->switch_tab (-1);
+                  return;
+                }
+            }
+
+          if (ctrl && (keysym == XK_Tab
+                       || (shft && keysym == XK_ISO_Left_Tab)))
+            {
+              tab_manager->switch_tab (shft ? -1 : 1);
+              return;
+            }
+        }
+#endif
 
 #if ENABLE_FRILLS || ISO_14755
       // ISO 14755 support

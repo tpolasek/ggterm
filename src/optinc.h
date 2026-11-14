@@ -62,6 +62,11 @@
  nodef(iso14755_52)
 #endif
  def(console)
+#if ENABLE_XEMBED
+ def(tabs)               // native tab support
+#else
+ nodef(tabs)
+#endif
 #if XFT
  def(buffered)
 #else

@@ -213,7 +213,7 @@
 /*
  * Minimum and maximum widths of the scrollbar (all styles)
  */
-#define SB_WIDTH_MINIMUM 	5
+#define SB_WIDTH_MINIMUM 	2
 #define SB_WIDTH_MAXIMUM 	100
 
 /*
