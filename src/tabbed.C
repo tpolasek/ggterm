@@ -59,9 +59,9 @@ rxvt_tab_manager::~rxvt_tab_manager ()
 bool
 rxvt_tabbed_requested (int argc, const char *const *argv)
 {
-  // tabs are on by default; +tab / --no-tabs runs a single plain window
+  // tabs are always on, except when embedding into another window
   for (int i = 1; i < argc; i++)
-    if (!strcmp (argv[i], "+tab") || !strcmp (argv[i], "--no-tabs"))
+    if (!strcmp (argv[i], "-embed"))
       return false;
 
   return true;
@@ -80,9 +80,6 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
 
   for (int i = 0; i < argc; i++)
     {
-      if (i && (!strcmp (argv[i], "-tab") || !strcmp (argv[i], "--tabs")))
-        continue;
-
       if (i && (!strcmp (argv[i], "-g") || !strcmp (argv[i], "-geometry")
                 || !strcmp (argv[i], "--geometry"))
           && i + 1 < argc)
