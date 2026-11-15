@@ -620,9 +620,6 @@ rxvt_tab_manager::draw_bar ()
         XDrawImageString (dpy, frame, gc, x0 + 4,
                           font->max_bounds.ascent + 3, title,
                           len > (size_t)maxch ? (size_t)maxch : len);
-
-      if (have_name)
-        XFree (name);
     }
 
   display->flush ();
