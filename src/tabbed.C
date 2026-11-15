@@ -141,7 +141,7 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
     }
 
   XSetWMNormalHints (dpy, frame, &sh);
-  XStoreName (dpy, frame, "urxvt");
+  XStoreName (dpy, frame, "Tomega");
 
   XClassHint ch;
   ch.res_name = (char *)"urxvt";
@@ -471,7 +471,7 @@ rxvt_tab_manager::draw_bar ()
       char *name = 0;
       bool have_name = !tabs[i]->closing && XFetchName (dpy, tabs[i]->window, &name);
 
-      const char *title = have_name && name ? name : "urxvt";
+      const char *title = have_name && name ? name : "Tomega";
       size_t len = strlen (title);
       int maxch = (seg - 8) / font->max_bounds.width;
 
