@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <pwd.h>
 #include <X11/Xutil.h>
 
 rxvt_tab_manager *tab_manager;
@@ -286,6 +288,41 @@ tab_fgcmd (rxvt_term *term, char *buf, int buflen)
     }
 
   buf[o] = 0;
+}
+
+// strip a redundant "user@host" prefix (our own user at our own host)
+// from a tab title: "thomas@linuxboi: ~" becomes ": ~"
+static void
+strip_userhost (char *title)
+{
+  char *at = strchr (title, '@');
+  if (!at)
+    return;
+
+  char *colon = strchr (at, ':');
+  if (!colon)
+    return;
+
+  struct passwd *pw = getpwuid (geteuid ());
+  if (!pw)
+    return;
+
+  size_t userlen = strlen (pw->pw_name);
+  if ((size_t)(at - title) != userlen || strncmp (title, pw->pw_name, userlen))
+    return;
+
+  char host[256];
+  if (gethostname (host, sizeof (host)))
+    return;
+
+  if (char *dot = strchr (host, '.'))
+    *dot = 0; // compare against the short hostname
+
+  size_t hostlen = colon - at - 1;
+  if (hostlen != strlen (host) || strncmp (at + 1, host, hostlen))
+    return;
+
+  memmove (title, colon, strlen (colon) + 1);
 }
 
 void
@@ -562,9 +599,13 @@ rxvt_tab_manager::draw_bar ()
       char *name = 0;
       bool have_name = !tabs[i]->closing && XFetchName (dpy, tabs[i]->window, &name);
 
+      char base[128];
+      snprintf (base, sizeof (base), "%s", have_name && name ? name : "Tomega");
+      strip_userhost (base);
+
       char label[160];
       snprintf (label, sizeof (label), "%s%s%s",
-                have_name && name ? name : "Tomega",
+                base,
                 tabs[i]->fgcmd[0] ? ": " : "",
                 tabs[i]->fgcmd);
 
