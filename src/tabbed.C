@@ -155,6 +155,9 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
   frame_ev.start (display, frame);
 
   shutdown_ev.set<rxvt_tab_manager, &rxvt_tab_manager::shutdown_cb> (this);
+  poll_ev.set<rxvt_tab_manager, &rxvt_tab_manager::poll_cb> (this);
+  poll_ev.repeat = 0.5;
+  poll_ev.start ();
 
   spawn ();
 
@@ -192,6 +195,7 @@ rxvt_tab_manager::spawn ()
   w->term = t;
   w->window = t->parent;
   w->closing = false;
+  w->fgcmd[0] = 0;
   w->ev.set<rxvt_tab_manager, &rxvt_tab_manager::tab_cb> (this);
   w->ev.start (display, t->parent);
 
@@ -219,6 +223,93 @@ rxvt_tab_manager::shutdown_cb ()
 {
   shutdown_ev.stop ();
   shutdown ();
+}
+
+// fill buf with the command currently in the foreground of the tab's
+// tty; empty when the shell itself is foreground (idle at a prompt)
+static void
+tab_fgcmd (rxvt_term *term, char *buf, int buflen)
+{
+  buf[0] = 0;
+
+  if (!term->cmd_pid)
+    return;
+
+  char path[64];
+  snprintf (path, sizeof (path), "/proc/%d/stat", term->cmd_pid);
+
+  FILE *f = fopen (path, "r");
+  if (!f)
+    return;
+
+  char line[512];
+  bool have = fgets (line, sizeof (line), f) != 0;
+  fclose (f);
+
+  if (!have)
+    return;
+
+  // ... ) state ppid pgrp session tty_nr tpgid ...
+  char *p = strrchr (line, ')');
+  if (!p)
+    return;
+
+  long pgrp = 0, tpgid = 0;
+  sscanf (p + 2, "%*s %*s %ld %*s %*s %ld", &pgrp, &tpgid);
+
+  if (tpgid <= 0 || tpgid == pgrp)
+    return; // the shell is the foreground process
+
+  snprintf (path, sizeof (path), "/proc/%ld/cmdline", tpgid);
+
+  f = fopen (path, "r");
+  if (!f)
+    return;
+
+  char args[256];
+  int n = fread (args, 1, sizeof (args) - 1, f);
+  fclose (f);
+
+  if (n <= 0)
+    return;
+
+  args[n] = 0;
+
+  // arguments are NUL-separated; join them with spaces
+  int o = 0;
+  for (int i = 0; i < n && o < buflen - 2; i++)
+    {
+      if (args[i])
+        buf[o++] = args[i];
+      else if (i + 1 < n && args[i + 1])
+        buf[o++] = ' ';
+    }
+
+  buf[o] = 0;
+}
+
+void
+rxvt_tab_manager::poll_cb ()
+{
+  bool changed = false;
+
+  for (int i = tabs.size (); i--; )
+    {
+      if (tabs[i]->closing)
+        continue;
+
+      char cmd[sizeof (tabs[i]->fgcmd)];
+      tab_fgcmd (tabs[i]->term, cmd, sizeof (cmd));
+
+      if (strcmp (cmd, tabs[i]->fgcmd))
+        {
+          strcpy (tabs[i]->fgcmd, cmd);
+          changed = true;
+        }
+    }
+
+  if (changed)
+    draw_bar ();
 }
 
 void
@@ -471,7 +562,16 @@ rxvt_tab_manager::draw_bar ()
       char *name = 0;
       bool have_name = !tabs[i]->closing && XFetchName (dpy, tabs[i]->window, &name);
 
-      const char *title = have_name && name ? name : "Tomega";
+      char label[160];
+      snprintf (label, sizeof (label), "%s%s%s",
+                have_name && name ? name : "Tomega",
+                tabs[i]->fgcmd[0] ? ": " : "",
+                tabs[i]->fgcmd);
+
+      if (have_name)
+        XFree (name);
+
+      const char *title = label;
       size_t len = strlen (title);
       int maxch = (seg - 8) / font->max_bounds.width;
 
