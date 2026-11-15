@@ -291,7 +291,7 @@ tab_fgcmd (rxvt_term *term, char *buf, int buflen)
 }
 
 // strip a redundant "user@host" prefix (our own user at our own host)
-// from a tab title: "thomas@linuxboi: ~" becomes ": ~"
+// from a tab title: "user@host: ~/dir" becomes "~/dir"
 static void
 strip_userhost (char *title)
 {
@@ -322,7 +322,12 @@ strip_userhost (char *title)
   if (hostlen != strlen (host) || strncmp (at + 1, host, hostlen))
     return;
 
-  memmove (title, colon, strlen (colon) + 1);
+  // drop the ": " separator along with the prefix
+  char *rest = colon + 1;
+  while (*rest == ' ')
+    rest++;
+
+  memmove (title, rest, strlen (rest) + 1);
 }
 
 void
