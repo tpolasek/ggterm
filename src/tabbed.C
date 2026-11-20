@@ -97,8 +97,8 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
   int geom_mask = geom ? XParseGeometry (geom, &x, &y, (unsigned *)&cols, (unsigned *)&rows) : 0;
 
   // default frame size: last size the user settled on
-  frame_w = 1000;
-  frame_h = 1200;
+  frame_w = 870;
+  frame_h = 1055;
 
   if (geom)
     {
@@ -107,6 +107,13 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
     }
 
   Display *dpy = display->dpy;
+
+  // centre on screen unless -geometry gave a position
+  if (!(geom_mask & (XValue | YValue)))
+    {
+      x = (DisplayWidth (dpy, DefaultScreen (dpy)) - frame_w) / 2;
+      y = (DisplayHeight (dpy, DefaultScreen (dpy)) - frame_h) / 2;
+    }
 
   font = XLoadQueryFont (dpy, "fixed");
 
@@ -142,12 +149,10 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
   sh.width = frame_w;
   sh.height = frame_h;
 
-  if (geom_mask & (XValue | YValue))
-    {
-      sh.flags |= USPosition;
-      sh.x = x;
-      sh.y = y;
-    }
+  // always supply a position: either the one from -geometry or centred
+  sh.flags |= USPosition;
+  sh.x = x;
+  sh.y = y;
 
   XSetWMNormalHints (dpy, frame, &sh);
   XStoreName (dpy, frame, "Tomega");

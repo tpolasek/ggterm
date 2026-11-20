@@ -802,6 +802,12 @@ rxvt_term::key_press (XKeyEvent &ev)
           return;
         }
 
+      if (ctrl && shft && (keysym == XK_v || keysym == XK_V))
+        {
+          selection_request (ev.time, Sel_Clipboard);
+          return;
+        }
+
 #if ENABLE_XEMBED
       if (tab_manager)
         {
