@@ -96,8 +96,15 @@ rxvt_tab_manager::run (int argc, const char *const *argv, const char *const *env
   int cols = 80, rows = 24, x = 0, y = 0;
   int geom_mask = geom ? XParseGeometry (geom, &x, &y, (unsigned *)&cols, (unsigned *)&rows) : 0;
 
-  frame_w = cols * CELL_W + 14;
-  frame_h = rows * CELL_H + 14 + tab_h;
+  // default frame size: last size the user settled on
+  frame_w = 1000;
+  frame_h = 1200;
+
+  if (geom)
+    {
+      frame_w = cols * CELL_W + 14;
+      frame_h = rows * CELL_H + 14 + tab_h;
+    }
 
   Display *dpy = display->dpy;
 
@@ -173,17 +180,40 @@ rxvt_tab_manager::spawn ()
   char id[32];
   snprintf (id, sizeof (id), "0x%lx", frame);
 
-  // the embed option must precede any -e command, whose arguments
-  // extend to the end of the command line
+  // new tabs start in the working directory of the active tab's shell
+  char cwdbuf[4096];
+  const char *cwd = 0;
+
+  if (active >= 0 && active < tabs.size () && tabs[active]->term->cmd_pid)
+    {
+      char lpath[64];
+      snprintf (lpath, sizeof (lpath), "/proc/%d/cwd", tabs[active]->term->cmd_pid);
+
+      int n = readlink (lpath, cwdbuf, sizeof (cwdbuf) - 1);
+      if (n > 0)
+        {
+          cwdbuf[n] = 0;
+          cwd = cwdbuf;
+        }
+    }
+
+  // the embed and cd options must precede any -e command, whose
+  // arguments extend to the end of the command line
   const char *targv[256];
   int n = 0;
 
-  if (spawn_argc < 1 || spawn_argc > 250)
+  if (spawn_argc < 1 || spawn_argc > 248)
     return;
 
   targv[n++] = spawn_argv[0];
   targv[n++] = "-embed";
   targv[n++] = id;
+
+  if (cwd)
+    {
+      targv[n++] = "-cd";
+      targv[n++] = cwd;
+    }
 
   for (int i = 1; i < spawn_argc; i++)
     targv[n++] = spawn_argv[i];
